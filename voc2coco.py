@@ -112,10 +112,10 @@ def parsetxtfile(txt_path):
 def check_cocopath(rootpath):
     if not os.path.exists(os.path.join(root_path, 'coco/annotations')):
         os.makedirs(os.path.join(root_path, 'coco/annotations'))
-    if not os.path.exists(os.path.join(root_path, 'coco/train')):
-        os.makedirs(os.path.join(root_path, 'coco/train'))
-    if not os.path.exists(os.path.join(root_path, 'coco/val')):
-        os.makedirs(os.path.join(root_path, 'coco/val'))
+    if not os.path.exists(os.path.join(root_path, 'coco/train2014')):
+        os.makedirs(os.path.join(root_path, 'coco/train2014'))
+    if not os.path.exists(os.path.join(root_path, 'coco/val2014')):
+        os.makedirs(os.path.join(root_path, 'coco/val2014'))
 
 if __name__ == '__main__':
     #===============仅需改该4个路径即可,建议绝对路径==============#
@@ -136,18 +136,18 @@ if __name__ == '__main__':
     new_traintxtlist, new_valtxtlist= parsetxtfile(traintxt_path), parsetxtfile(valtxt_path)
 
     # validation data
-    json_file = os.path.join(root_path, 'coco/annotations/val2014.json') # str: './demo/coco/annotations/instances_val2014.json'
+    json_file = os.path.join(root_path, 'coco/annotations/instances_train2014.json') # str: './demo/coco/annotations/instances_val2014.json'
     convert(new_valtxtlist, xml_dir, json_file)
 
     for xml_file in new_valtxtlist: # val data
         img_name = xml_file[:-4] + '.jpg'
         shutil.copy(os.path.join(voc_jpg_path, img_name),
-                    os.path.join(root_path, 'coco/val', img_name))
+                    os.path.join(root_path, 'coco/val2014', img_name))
 
     # train data
-    json_file = os.path.join(root_path, 'coco/annotations/train.json')
+    json_file = os.path.join(root_path, 'coco/annotations/instances_train2014.json')
     convert(new_traintxtlist, xml_dir, json_file)
     for xml_file in new_traintxtlist:  # train data
         img_name = xml_file[:-4] + '.jpg'
         shutil.copy(os.path.join(voc_jpg_path, img_name),
-                    os.path.join(root_path, 'coco/train', img_name))
+                    os.path.join(root_path, 'coco/train2014', img_name))
