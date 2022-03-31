@@ -17,7 +17,6 @@ checkpoint_url = 'COCO-Detection/faster_rcnn_R_50_FPN_3x.yaml'
 # config_file_path = 'COCO-Detection/retinanet_R_50_FPN_3x.yaml'
 # checkpoint_url = 'COCO-Detection/retinanet_R_50_FPN_3x.yaml'
 
-
 output_dir = './output/object_detection'
 num_classes = 3  #define model num_classes
 input_size = [480, 480]   # [train, val]
@@ -47,13 +46,19 @@ def main():
     cfg = get_train_cfg(config_file_path, checkpoint_url, train_dataset_name,
                         test_dataset_name, num_classes, device, output_dir, input_size)
     with open(cfg_save_path, 'wb') as f:
-        pickle.dump(cfg, f, protocol=pickle.HIGHEST_PROTOCOL)  # 保存cfg文件
+        pickle.dump(cfg, f, protocol=pickle.HIGHEST_PROTOCOL)  # 保存cfg文件，
 
     os.makedirs(cfg.OUTPUT_DIR, exist_ok=True)
 
     trainer = DefaultTrainer(cfg)
-    trainer.resume_or_load(resume=False)
 
+    #---用于记录训练时,validation loss---#
+    val_loss = ValidationLoss(cfg, cfg.DATASETS.TEST)
+    trainer.register_hooks([val_loss])
+    trainer._hooks = trainer._hooks[:-2] + trainer._hooks[-2:][::-1]
+    #----------------------------------#
+
+    trainer.resume_or_load(resume=False)
     trainer.train()
 
 if __name__ == '__main__':

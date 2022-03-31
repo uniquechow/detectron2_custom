@@ -1,15 +1,18 @@
 
-from detectron2.data import DatasetCatalog, MetadataCatalog
-from detectron2.utils.visualizer import Visualizer
+from detectron2.data import DatasetCatalog, MetadataCatalog,build_detection_train_loader
+from detectron2.utils.visualizer import Visualizer, ColorMode
 from detectron2.config import get_cfg # 用于初始化参数
 from detectron2 import model_zoo  # 用于加载模型
-
-from detectron2.utils.visualizer import ColorMode
+from detectron2.engine import HookBase
+import detectron2.utils.comm as comm
+import torch
 
 import random
 import cv2
 import matplotlib.pyplot as plt
+from libs.plots import plot_one_box, Colors
 
+import json
 
 def plot_samples(dataset_name, n=1):
     dataset_custom = DatasetCatalog.get(dataset_name)
@@ -52,18 +55,9 @@ def get_train_cfg(config_file_path, checkpoint_url, train_dataset_name,
 
     return cfg
 
-# detect image
-# prediction , draw_instance error ,now 3.30
-def on_image(image_path, predictor):
-    im = cv2.imread(image_path)
-    outputs = predictor(im)
-    v = Visualizer(im[:, :, ::-1], metadata={}, scale=0.5, instance_mode=ColorMode.SEGMENTATION)
-    v = v.draw_instance_predictions(outputs['instances'].to('cpu'))
 
-    plt.figure(figsize=(14, 10))
-    plt.imshow(v.get_image())
-    plt.show()
 
+# detect on video , 需先丢该
 def on_video(videoPath, predictor):
     cap = cv2.VideoCapture(videoPath)
     if (cap.isOpened()== False):
@@ -80,6 +74,28 @@ def on_video(videoPath, predictor):
         if key==ord('q'):
             break
 
+# 用于计算训练中validation loss
+class ValidationLoss(HookBase):
+    def __init__(self, cfg, DATASETS_VAL_NAME):  # 多加一个DATASETS_VAL_NAME参数（小改动）
+        super().__init__()
+        self.cfg = cfg.clone()
+        self.cfg.DATASETS.TRAIN = DATASETS_VAL_NAME  ##
+        self._loader = iter(build_detection_train_loader(self.cfg))
+
+    def after_step(self):
+        data = next(self._loader)
+        with torch.no_grad():
+            loss_dict = self.trainer.model(data)
+
+            losses = sum(loss_dict.values())
+            assert torch.isfinite(losses).all(), loss_dict
+
+            loss_dict_reduced = {"val_" + k: v.item() for k, v in
+                                 comm.reduce_dict(loss_dict).items()}
+            losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+            if comm.is_main_process():
+                self.trainer.storage.put_scalars(total_val_loss=losses_reduced,
+                                                 **loss_dict_reduced)
 
 
 
